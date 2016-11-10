@@ -32,7 +32,7 @@ main
 
 """   
 
-
+my_little_python_script_version = "CRT_Metadata_1.0"
 # python include
 import time, os, shutil, sys, gc
 import pprint
@@ -97,16 +97,16 @@ def createMetadata(in_file):
         
 
 
+    eventdump(in_file,0)
 
-    run            = "Wait for Wes"
-    subrun         = "Wait for Wes"
+    run            = "Wait for Wes" #run of first event
+    subrun         = "Wait for Wes" #subrun of first event
     sevt           = -1  # first event (in uboone 0)
     stime          = -1  # first event time stamp --> check the format, up to seconds
     etime          = -1  # last event time stamp --> check the format, up to seconds
     eevt           = -1  # last event (in uboone 49)
     num_events     = -1  # CRT events are not sequential... I need to come up with a way...
     ver                = -1 # daq version
-    ub_project_version = -1 # this used to be pub's version
     gps_stime_usec     = -1
     gps_etime_usec     = -1 
     file_format = "not sure, need to talk to Wes"
@@ -127,7 +127,7 @@ def createMetadata(in_file):
                 "data_tier": "raw", "event_count": num_events,
                 "ub_project.name": "online", 
                 "ub_project.stage": "crt_assembler", 
-                "ub_project.version": ub_project_version,
+                "ub_project.version": my_little_python_script_version ,
                 'online.start_time_usec': str(gps_stime_usec),
                 'online.end_time_usec': str(gps_etime_usec)
                 }
@@ -138,17 +138,23 @@ def createMetadata(in_file):
     print 
     print
 
+    jsonFileName = os.path.basename(in_file) + ".json"
+    with open(jsonFileName, 'w') as outfile:
+        json.dump(jsonData, outfile)
 
 
 
-
-
+def eventdump(infile,skipEvents):
+    cmd = "art -c RunTimeCoincidence.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
+    print cmd
+    p = subprocess.Popen([cmd, ''],
+                         stdout=subprocess.PIPE,  
+                         stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    print out
 
 
 if __name__ == '__main__':
-    
-
-
     # This code takes as an argument the list of file 
     # we need to generate metadata for
     parser = argparse.ArgumentParser()
