@@ -85,35 +85,47 @@ def createMetadata(in_file):
     subrun         = "Bogus" #subrun of first event
     sevt           = "Bogus"  # first event (in uboone 0)
     eevt           = "Bogus"  # last event (in uboone 49)
+    stime = etime = '1970-01-01:T00:00:00'
+    gps_etime = gps_etime_usec = gps_etime_secs = -1
+    gps_stime = gps_stime_usec = gps_etime_usec = -1
 
-    stime          = -1  # first event time stamp --> check the format, up to seconds
-    etime          = -1  # last event time stamp --> check the format, up to seconds
+    #    stime          = -1  # first event time stamp --> check the format, up to seconds
+    #    etime          = -1  # last event time stamp --> check the format, up to seconds
     num_events     = -1  # CRT events are not sequential... I need to come up with a way...
     ver                = -1 # daq version
-    gps_stime_usec     = -1
-    gps_etime_usec     = -1 
     file_format = "not sure, need to talk to Wes"
   
 
     ##################  Read the dump file for first event ##################   
     ################ THIS NEEDS TO BE CHANGED WHEN THE DAQ FILE IS NOT BOGUS
-    first_evt_dump = eventdump(in_file,3).split('\n') 
+    first_evt_dump = eventdump(in_file,0).split('\n') 
     for line in  first_evt_dump:
         if "run:" in line:
             w   = line.split()
             run    = int(w[w.index("run:")+1])           
             subrun = int(w[w.index("subRun:")+1])
             sevt   = int(w[w.index("event:")+1])
+        if "time" in line:
+            w   = line.split()
+            stime_secs_tmp = int(w[w.index("s,")-1])
+            stime = datetime.datetime.fromtimestamp(stime_secs_tmp).replace(microsecond=0).isoformat()
+            break
 
+    print stime
     ##################  Read the dump file for last event ##################   
     ################ THIS NEEDS TO BE CHANGED WHEN THE DAQ FILE IS NOT BOGUS
-    last_evt_dump = eventdump(in_file,4).split('\n') 
+    last_evt_dump = eventdump(in_file,29).split('\n') 
     for line in  last_evt_dump:
         if "run:" in line:
             w   = line.split()
             eevt   = int(w[w.index("event:")+1])
-            
+        if "time" in line:
+            w   = line.split()
+            etime_secs_tmp = int(w[w.index("s,")-1])
+            etime = datetime.datetime.fromtimestamp(etime_secs_tmp).replace(microsecond=0).isoformat()
+            break
                 
+    print etime
 
     jsonData = {'file_name': os.path.basename(in_file), 
                 'file_type': "data", 
@@ -153,13 +165,13 @@ def createMetadata(in_file):
 # - the number of events we want to skip
 def eventdump(infile,skipEvents):
     cmd = "art -c RunTimeCoincidence.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
-    print cmd, "$$$$$$$$"
+    #print cmd, "$$$$$$$$"
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE)
      #                    stderr=subprocess.PIPE)
     out, err = p.communicate()
     #out, err = p.communicate()
-    print out
+    #print out
     return out
 
 
