@@ -6,28 +6,39 @@ Creation Date: 2016-11-07
 Version 0 
 -----------------------------------------------------------------------
 TO DO:
-[ x ] Understand how to setups without root permission
+[   ] Understand how to setups without root permission
 [ x ] Run the dump command
-[   ] Read the dump output
+[ x ] Read the dump output
 [   ] Fill variables:
       [ x ]  run           
       [ x ]  subrun        
       [ x ]  sevt          
-      [   ]  stime         
-      [   ]  etime         
+      [ x ]  stime         
+      [ x ]  etime         
       [ x ]  eevt           
-      [   ]  num_events         
+      [ x ]  num_events         
       [   ]  ver      
       [   ]  file_format
-      [   ]  ub_project_version 
+      [ x ]  ub_project_version 
       [   ]  gps_stime_usec     
       [   ]  gps_etime_usec     
 [ x ] undestand output format
 
-functions:
-x dumpEvent()
-  readEventDump(string)
-  createMetadata()
+
+Functions:
+x dumpEvent(input_file, skipEvents):
+   This function runs the shell command 
+   $ art -c RunTimeCoincidence.fcl -s input_file  -n 1  --nskip skipEvents
+   and returns its stdout. 
+   This art command dumps information about the event which are used to fill the metadata
+
+x fileEventCount(input_file):
+   This function runs the shell command 
+   $ count_events input_file
+   and returns the 4th world of its stdout, which is the number of art events in the file
+
+-  createMetadata(input_file):
+
 x main
 
 """   
@@ -87,17 +98,17 @@ def createMetadata(in_file):
     eevt           = "Bogus"  # last event (in uboone 49)
     stime = etime = '1970-01-01:T00:00:00'
     gps_etime = gps_etime_usec = gps_etime_secs = -1
-    gps_stime = gps_stime_usec = gps_etime_usec = -1
+    gps_stime = gps_stime_usec = gps_stime_usec = -1
 
-    #    stime          = -1  # first event time stamp --> check the format, up to seconds
-    #    etime          = -1  # last event time stamp --> check the format, up to seconds
-    num_events     = -1  # CRT events are not sequential... I need to come up with a way...
+    num_events     = fileEventCount(in_file)  # CRT events are not sequential...
+    events_to_skip = int(num_events) - 1
+
+    # TO DO
     ver                = -1 # daq version
     file_format = "not sure, need to talk to Wes"
   
 
     ##################  Read the dump file for first event ##################   
-    ################ THIS NEEDS TO BE CHANGED WHEN THE DAQ FILE IS NOT BOGUS
     first_evt_dump = eventdump(in_file,0).split('\n') 
     for line in  first_evt_dump:
         if "run:" in line:
@@ -111,10 +122,8 @@ def createMetadata(in_file):
             stime = datetime.datetime.fromtimestamp(stime_secs_tmp).replace(microsecond=0).isoformat()
             break
 
-    print stime
     ##################  Read the dump file for last event ##################   
-    ################ THIS NEEDS TO BE CHANGED WHEN THE DAQ FILE IS NOT BOGUS
-    last_evt_dump = eventdump(in_file,29).split('\n') 
+    last_evt_dump = eventdump(in_file,events_to_skip).split('\n') 
     for line in  last_evt_dump:
         if "run:" in line:
             w   = line.split()
@@ -124,8 +133,7 @@ def createMetadata(in_file):
             etime_secs_tmp = int(w[w.index("s,")-1])
             etime = datetime.datetime.fromtimestamp(etime_secs_tmp).replace(microsecond=0).isoformat()
             break
-                
-    print etime
+
 
     jsonData = {'file_name': os.path.basename(in_file), 
                 'file_type': "data", 
@@ -175,6 +183,12 @@ def eventdump(infile,skipEvents):
     return out
 
 
+def fileEventCount(infile):
+    cmd = "count_events "+infile
+    p = subprocess.Popen(cmd,shell=True,
+                         stdout=subprocess.PIPE)
+    out, err = p.communicate()
+    return out.split()[3]
 
 if __name__ == '__main__':
     # This code takes as an argument the list of file 
