@@ -49,12 +49,12 @@ import subprocess
 
 import datetime, json
 import argparse
-'''
+
 # samweb include
 import samweb_cli
 import samweb_client.utility
-import extractor_dict
-'''
+#import extractor_dict
+
 
 def createMetadata(in_file):    
     ################  Retreive the file size ################ 
@@ -69,7 +69,7 @@ def createMetadata(in_file):
     
     ##################  Define the checksum ##################
     checksum       = -1
-    '''
+    
     metadata = {}
     try:
         metadata['crc'] = samweb_client.utility.fileEnstoreChecksum( in_file )
@@ -80,7 +80,7 @@ def createMetadata(in_file):
         subject = 'Failed to obtain the checksum of the file %s' % in_file
         text = """File: %sError message: %s""" % ( in_file, errorMessage )
         statusCode = 100
-    '''
+    
     run            = "Bogus" #run of first event
     subrun         = "Bogus" #subrun of first event
     sevt           = "Bogus"  # first event (in uboone 0)
