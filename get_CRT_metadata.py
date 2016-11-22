@@ -18,10 +18,10 @@ TO DO:
       [ x ]  eevt           
       [ x ]  num_events         
       [   ]  ver      
-      [   ]  file_format
+      [ x ]  file_format
       [ x ]  ub_project_version 
-      [   ]  gps_stime_usec     
-      [   ]  gps_etime_usec     
+      [ x ]  gps_stime_usec     
+      [ x ]  gps_etime_usec     
 [ x ] undestand output format
 
 
@@ -124,10 +124,9 @@ def createMetadata(in_file):
                 nsTimeStampsFirst.append(float(w[w.index("ns.")-1]))
 
     nsTimeStampsFirst.sort()
-    print nsTimeStampsFirst[0], nsTimeStampsFirst[len(nsTimeStampsFirst)-1]
-
-
-    
+#    print nsTimeStampsFirst[0], nsTimeStampsFirst[len(nsTimeStampsFirst)-1]
+    gps_stime_usec = round(nsTimeStampsFirst[0]/1000)
+    print gps_stime_usec   
     ##################  Read the dump file for last event ##################   
     prevLine = ""
     nsTimeStampsLast = []
@@ -151,8 +150,9 @@ def createMetadata(in_file):
 
     nsTimeStampsLast.sort()
     #You're still missing one event
-    print nsTimeStampsLast[0], nsTimeStampsLast[len(nsTimeStampsLast)-1]
-            
+    #    print nsTimeStampsLast[0], nsTimeStampsLast[len(nsTimeStampsLast)-1]
+    gps_etime_usec = round(nsTimeStampsLast[len(nsTimeStampsLast)-1]/1000)
+    print gps_etime_usec
 
     ##################  Define file_format as Wes said ##################   
     file_format = "artroot"
