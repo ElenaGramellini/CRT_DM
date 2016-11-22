@@ -38,8 +38,14 @@ x fileEventCount(input_file):
    and returns the 4th world of its stdout, which is the number of art events in the file
 
 -  createMetadata(input_file):
+   1) Aquires the metadata from  file name and location
+   2) calls dumpEvent(input_file, 0) to get info on first event
+   3) calls fileEventCount(input_file) to get number of events to skip
+   4) calls dumpEvent(input_file, nskip) to get info on last event
+   5) writes out metadata
 
-x main
+x main:
+  parses the input file list and calls createMetadata(input_file) for each file in such list
 
 """   
 
@@ -48,16 +54,6 @@ my_little_python_script_version = "CRT_Metadata_1.0"
 import time, os, shutil, sys, gc
 import pprint
 import subprocess
-
-#os.system("source /grid/fermiapp/products/uboone/setup_uboone.sh")
-    #os.system("source /artdaq_products/setup")
-    # source setup and setup uboonecode and CRTdaq code 
-
-    #os.system("setup bernfebdaq v00_03_00 -qe10:s41:eth:prof")
-
-    ###########os.system("setup uboonecode v05_08_00 -q e9:prof")
-
-
 import datetime, json
 import argparse
 
@@ -105,10 +101,12 @@ def createMetadata(in_file):
 
     # TO DO
     ver                = -1 # daq version
-    file_format = "not sure, need to talk to Wes"
+
   
 
     ##################  Read the dump file for first event ##################   
+    nsTimeStampsFirst = [] 
+    flagFirstEvent = True
     first_evt_dump = eventdump(in_file,0).split('\n') 
     for line in  first_evt_dump:
         if "run:" in line:
@@ -118,11 +116,22 @@ def createMetadata(in_file):
             sevt   = int(w[w.index("event:")+1])
         if "time" in line:
             w   = line.split()
-            stime_secs_tmp = int(w[w.index("s,")-1])
-            stime = datetime.datetime.fromtimestamp(stime_secs_tmp).replace(microsecond=0).isoformat()
-            break
+            if (flagFirstEvent):
+                stime_secs_tmp = int(w[w.index("s,")-1])
+                stime = datetime.datetime.fromtimestamp(stime_secs_tmp).replace(microsecond=0).isoformat()
+                flagFirstEvent = False
+            if "Event 0" in line:
+                nsTimeStampsFirst.append(float(w[w.index("ns.")-1]))
 
+    nsTimeStampsFirst.sort()
+    print nsTimeStampsFirst[0], nsTimeStampsFirst[len(nsTimeStampsFirst)-1]
+
+
+    
     ##################  Read the dump file for last event ##################   
+    prevLine = ""
+    nsTimeStampsLast = []
+    flagLastEvent = True
     last_evt_dump = eventdump(in_file,events_to_skip).split('\n') 
     for line in  last_evt_dump:
         if "run:" in line:
@@ -130,11 +139,25 @@ def createMetadata(in_file):
             eevt   = int(w[w.index("event:")+1])
         if "time" in line:
             w   = line.split()
-            etime_secs_tmp = int(w[w.index("s,")-1])
-            etime = datetime.datetime.fromtimestamp(etime_secs_tmp).replace(microsecond=0).isoformat()
-            break
+            if (flagLastEvent):
+                etime_secs_tmp = int(w[w.index("s,")-1])
+                etime = datetime.datetime.fromtimestamp(etime_secs_tmp).replace(microsecond=0).isoformat()
+                flagLastEvent = False        
+            if "Event 0" in line:
+                wo = prevLine.split()
+                if "ns." in wo:
+                    nsTimeStampsLast.append(float(wo[wo.index("ns.")-1]))
+        prevLine = line
 
+    nsTimeStampsLast.sort()
+    #You're still missing one event
+    print nsTimeStampsLast[0], nsTimeStampsLast[len(nsTimeStampsLast)-1]
+            
 
+    ##################  Define file_format as Wes said ##################   
+    file_format = "artroot"
+
+    ##################  Fill the metadata ##################   
     jsonData = {'file_name': os.path.basename(in_file), 
                 'file_type': "data", 
                 'file_size': fsize, 
@@ -155,14 +178,7 @@ def createMetadata(in_file):
                 'online.end_time_usec': str(gps_etime_usec)
                 }
     
-    '''
-    #Just for debug
-    for i in jsonData:
-        print i, jsonData[i]
-    print 
-    print
-    '''
-    # Create the json file containing the metadata
+    ################## Create the json file containing the metadata ##################   
     jsonFileName = os.path.basename(in_file) + ".json"
     with open(jsonFileName, 'w') as outfile:
         json.dump(jsonData, outfile)
@@ -173,16 +189,13 @@ def createMetadata(in_file):
 # - the number of events we want to skip
 def eventdump(infile,skipEvents):
     cmd = "art -c RunTimeCoincidence.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
-    #print cmd, "$$$$$$$$"
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE)
-     #                    stderr=subprocess.PIPE)
     out, err = p.communicate()
-    #out, err = p.communicate()
-    #print out
     return out
 
-
+# Count events in DAQ file given:
+# - the DAQ file name
 def fileEventCount(infile):
     cmd = "count_events "+infile
     p = subprocess.Popen(cmd,shell=True,
