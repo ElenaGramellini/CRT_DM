@@ -6,7 +6,7 @@ Creation Date: 2016-11-07
 Version 0 
 -----------------------------------------------------------------------
 TO DO:
-[   ] Understand how to setups without root permission
+[ x ] Understand how to setups without root permission
 [ x ] Run the dump command
 [ x ] Read the dump output
 [   ] Fill variables:
@@ -23,7 +23,12 @@ TO DO:
       [ x ]  gps_stime_usec     
       [ x ]  gps_etime_usec     
 [ x ] undestand output format
-
+[   ] implement checks:
+      [   ]  did the subprocess command hang ? --> process timeout, check status
+      [   ]  is the fcl file right ?
+      [   ]  how can I report the error ?
+      [   ]  handle file not found
+      [   ]  is json format right for sam?
 
 Functions:
 x dumpEvent(input_file, skipEvents):

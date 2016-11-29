@@ -12,13 +12,22 @@ fi
 
 echo "sourcing a bunch of usefull stuff:"
 echo "1) uboone code source and setup"
-source /grid/fermiapp/products/uboone/setup_uboone.sh
-setup uboonecode v05_08_00 -q e9:prof
+#source /grid/fermiapp/products/uboone/setup_uboone.sh
+#setup uboonecode v05_08_00 -q e9:prof
 
 echo "2) CRTdaq source and setup" 
 source /artdaq_products/setup
 setup bernfebdaq v00_03_00 -qe10:s41:eth:prof
-
+setup sam_web_client
 
 echo "launching python get_CRT_metadata.py for file list $1"
 python get_CRT_metadata.py $1
+
+if [ $? == 0 ]; then
+
+	echo "copying binary file from CRT EVB to dropbox"
+#	ifdh cp $CRT_FILE /pnfs/uboone/scratch/uboonepro/dropbox/blah/blah/blah
+
+#	put in a bunch of checks to make sure it didn't fail here
+fi
+
