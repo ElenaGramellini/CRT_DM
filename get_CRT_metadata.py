@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """@package docstring
 Scope of this python script: create metadata one CRT raw file
 Author: Elena Gramellini
@@ -6,7 +6,7 @@ Creation Date: 2016-11-07
 Version 0 
 -----------------------------------------------------------------------
 TO DO:
-[   ] Re-write launch script with checks
+[   ] Understand the stupid email....
 [   ] Fill variables:
       [   ]  stime         
       [   ]  etime         
@@ -15,11 +15,10 @@ TO DO:
       [   ]  gps_etime_usec     
 [   ] implement checks:
       [   ]  did the subprocess command hang ? --> process timeout, check status
-      [   ]  ?????????????????????????????????????????????????????????????????????????is the fcl file right ?
+      [   ]  is the fcl file right?is the file corrupted? probably in the same part
       [ x ]  write filename.out filename.err to report problems
       [ x ]  handle file not found
-      [   ]  is the file corrupted?
-      [   ]  is json format right for sam?
+      [ x ]  is json format right for sam?
       [   ]  time out for metadata validation
 
 Functions:
@@ -35,9 +34,10 @@ x fileEventCount(input_file):
    and returns the 4th world of its stdout, which is the number of art events in the file
 
 - matadataValidation(input_file):
-   This function return false if the metadata file is not in the same folder as the data file
-   Performs the same web metadata-validation
-   returns true or false given the metadata-validation response
+   This function exits with error 
+    x if the metadata file doesn't exist
+    x if the SAM metadata-validation goes wrong
+    - if the SAM metadata-validation takes too much time
 
 -  createMetadata(input_file):
    1) Aquires the metadata from  file name and location
@@ -47,7 +47,11 @@ x fileEventCount(input_file):
    5) writes out metadata
 
 x main:
-  parses the input file list and calls createMetadata(input_file) for each file in such list
+  x checks if the argument is a file (if not exit with error)
+  x opens the writings of the stdout and stderr for logging purposes
+  x calls createMetadata(input_file)
+  x calla matadataValidation(in_file,jsonData)
+ 
 
 """   
 
@@ -205,6 +209,9 @@ def eventdump(infile,skipEvents):
 # - the DAQ file name
 def fileEventCount(infile):
     cmd = "count_events "+infile
+#    seconds=10 # works only in python3
+#    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=seconds)
+    
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE)
     out, err = p.communicate()
@@ -217,10 +224,8 @@ def matadataValidation(infile,jsonData):
     # If not, exit with error
     if not  os.path.isfile(jsonFileName): 
          sys.exit(in_file +": Metadata File Not Found")
-
     # Set up the experiment for the SAM
     samweb = samweb_cli.SAMWebClient(experiment="uboone")
-
     # Check if metadata is valid, or exit with error
     try:
         samweb.validateFileMetadata(jsonData)       
@@ -239,8 +244,8 @@ if __name__ == '__main__':
 
     # We want to write the stdout and stderr 
     # for logging purposes in case something goes wrong
-    sys.stdout = open(in_file+".out", 'w')
-    sys.stderr = open(in_file+".err", 'w')
+#    sys.stdout = open(in_file+".out", 'w')
+#    sys.stderr = open(in_file+".err", 'w')
     
     print in_file
     # Check if file exists, or exit with error
@@ -253,6 +258,7 @@ if __name__ == '__main__':
 
 '''
 DONE:
+[ x ] Re-write launch script with checks
 [ x ] Understand how to setups without root permission
 [ x ] Run the dump command
 [ x ] Read the dump output
