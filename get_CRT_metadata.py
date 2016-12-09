@@ -1,39 +1,31 @@
 #! /usr/bin/env python
 """@package docstring
-Scope of this python script: create metadata from a list of CRT raw files
+Scope of this python script: create metadata one CRT raw file
 Author: Elena Gramellini
 Creation Date: 2016-11-07 
 Version 0 
 -----------------------------------------------------------------------
 TO DO:
-[ x ] Understand how to setups without root permission
-[ x ] Run the dump command
-[ x ] Read the dump output
+[   ] Re-write launch script with checks
 [   ] Fill variables:
-      [ x ]  run           
-      [ x ]  subrun        
-      [ x ]  sevt          
-      [ x ]  stime         
-      [ x ]  etime         
-      [ x ]  eevt           
-      [ x ]  num_events         
-      [   ]  ver      
-      [ x ]  file_format
-      [ x ]  ub_project_version 
-      [ x ]  gps_stime_usec     
-      [ x ]  gps_etime_usec     
-[ x ] undestand output format
+      [   ]  stime         
+      [   ]  etime         
+      [   ]  ver --> needs work on the DAQ side!!!!      
+      [   ]  gps_stime_usec     
+      [   ]  gps_etime_usec     
 [   ] implement checks:
       [   ]  did the subprocess command hang ? --> process timeout, check status
-      [   ]  is the fcl file right ?
-      [   ]  how can I report the error ?
-      [   ]  handle file not found
+      [   ]  ?????????????????????????????????????????????????????????????????????????is the fcl file right ?
+      [ x ]  write filename.out filename.err to report problems
+      [ x ]  handle file not found
+      [   ]  is the file corrupted?
       [   ]  is json format right for sam?
+      [   ]  time out for metadata validation
 
 Functions:
 x dumpEvent(input_file, skipEvents):
    This function runs the shell command 
-   $ art -c RunTimeCoincidence.fcl -s input_file  -n 1  --nskip skipEvents
+   $ art -c SAMMetaDataDump.fcl  -s input_file  -n 1  --nskip skipEvents
    and returns its stdout. 
    This art command dumps information about the event which are used to fill the metadata
 
@@ -41,6 +33,11 @@ x fileEventCount(input_file):
    This function runs the shell command 
    $ count_events input_file
    and returns the 4th world of its stdout, which is the number of art events in the file
+
+- matadataValidation(input_file):
+   This function return false if the metadata file is not in the same folder as the data file
+   Performs the same web metadata-validation
+   returns true or false given the metadata-validation response
 
 -  createMetadata(input_file):
    1) Aquires the metadata from  file name and location
@@ -61,11 +58,13 @@ import pprint
 import subprocess
 import datetime, json
 import argparse
-
+import warnings
 # samweb include
 import samweb_cli
 import samweb_client.utility
 #import extractor_dict
+
+
 
 
 def createMetadata(in_file):    
@@ -81,7 +80,7 @@ def createMetadata(in_file):
     
     ##################  Define the checksum ##################
     checksum       = -1
-    
+
     metadata = {}
     try:
         metadata['crc'] = samweb_client.utility.fileEnstoreChecksum( in_file )
@@ -93,10 +92,10 @@ def createMetadata(in_file):
         text = """File: %sError message: %s""" % ( in_file, errorMessage )
         statusCode = 100
     
-    run            = "Bogus" #run of first event
-    subrun         = "Bogus" #subrun of first event
-    sevt           = "Bogus"  # first event (in uboone 0)
-    eevt           = "Bogus"  # last event (in uboone 49)
+    run            = "Bogus"   # run of first event
+    subrun         = "Bogus"   # subrun of first event
+    sevt           = "Bogus"   # first event
+    eevt           = "Bogus"   # last event 
     stime = etime = '1970-01-01:T00:00:00'
     gps_etime = gps_etime_usec = gps_etime_secs = -1
     gps_stime = gps_stime_usec = gps_stime_usec = -1
@@ -114,6 +113,9 @@ def createMetadata(in_file):
     flagFirstEvent = True
     first_evt_dump = eventdump(in_file,0).split('\n') 
     for line in  first_evt_dump:
+        if "CRTDAQVersion" in line:
+            w   = line.split()
+            ver = w[3]+"_"+w[7]+"_"+w[11]
         if "run:" in line:
             w   = line.split()
             run    = int(w[w.index("run:")+1])           
@@ -129,9 +131,7 @@ def createMetadata(in_file):
                 nsTimeStampsFirst.append(float(w[w.index("ns.")-1]))
 
     nsTimeStampsFirst.sort()
-#    print nsTimeStampsFirst[0], nsTimeStampsFirst[len(nsTimeStampsFirst)-1]
     gps_stime_usec = round(nsTimeStampsFirst[0]/1000)
-    print gps_stime_usec   
     ##################  Read the dump file for last event ##################   
     prevLine = ""
     nsTimeStampsLast = []
@@ -155,9 +155,7 @@ def createMetadata(in_file):
 
     nsTimeStampsLast.sort()
     #You're still missing one event
-    #    print nsTimeStampsLast[0], nsTimeStampsLast[len(nsTimeStampsLast)-1]
     gps_etime_usec = round(nsTimeStampsLast[len(nsTimeStampsLast)-1]/1000)
-    print gps_etime_usec
 
     ##################  Define file_format as Wes said ##################   
     file_format = "artroot"
@@ -167,7 +165,7 @@ def createMetadata(in_file):
                 'file_type': "data", 
                 'file_size': fsize, 
                 'file_format': file_format, 
-                'runs': [ [run,  subrun, run_type] ], 
+                'runs': [ [ run, subrun, run_type] ], 
                 'first_event': sevt, 
                 'start_time': stime, 
                 'end_time': etime, 
@@ -184,18 +182,22 @@ def createMetadata(in_file):
                 }
     
     ################## Create the json file containing the metadata ##################   
-    jsonFileName = os.path.basename(in_file) + ".json"
+    jsonFileName = str(in_file) + ".json"
     with open(jsonFileName, 'w') as outfile:
         json.dump(jsonData, outfile)
+    ################## Return metadata object ##################   
+    return jsonData
+
 
 
 # Dump DAQ file content for 1 event given:
 # - the DAQ file name
 # - the number of events we want to skip
 def eventdump(infile,skipEvents):
-    cmd = "art -c RunTimeCoincidence.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
+    cmd = "art -c SAMMetaDataDump.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
     p = subprocess.Popen(cmd,shell=True,
-                         stdout=subprocess.PIPE)
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
     out, err = p.communicate()
     return out
 
@@ -208,19 +210,73 @@ def fileEventCount(infile):
     out, err = p.communicate()
     return out.split()[3]
 
+
+def matadataValidation(infile,jsonData):
+    jsonFileName = str(infile)+".json"
+    # Check if we actually generated the json file
+    # If not, exit with error
+    if not  os.path.isfile(jsonFileName): 
+         sys.exit(in_file +": Metadata File Not Found")
+
+    # Set up the experiment for the SAM
+    samweb = samweb_cli.SAMWebClient(experiment="uboone")
+
+    # Check if metadata is valid, or exit with error
+    try:
+        samweb.validateFileMetadata(jsonData)       
+        return True
+    except Exception:
+        sys.exit(in_file +" : Invalid/Corrupted Metadata")
+
+
 if __name__ == '__main__':
-    # This code takes as an argument the list of file 
+    # This code takes as an argument the file 
     # we need to generate metadata for
     parser = argparse.ArgumentParser()
-    parser.add_argument("file_list", help="this is the list of files you want to generate metadata for")
+    parser.add_argument("filename", help="this is the name of the file you want to generate metadata for")
     args = parser.parse_args()
+    in_file = args.filename
 
-    # Read filelist
-    in_file_v = []
-    with open(args.file_list) as inputlist:
-        for line in inputlist:
-            in_file_v.append(line.rstrip('\n'))
-            
-    # Create metadata for each file in the filelist
-    for in_file in in_file_v:
-        createMetadata(in_file)
+    # We want to write the stdout and stderr 
+    # for logging purposes in case something goes wrong
+    sys.stdout = open(in_file+".out", 'w')
+    sys.stderr = open(in_file+".err", 'w')
+    
+    print in_file
+    # Check if file exists, or exit with error
+    if os.path.isfile(in_file): 
+        jsonData = createMetadata(in_file)
+        matadataValidation(in_file,jsonData)
+    else:
+        sys.exit(in_file+" : File Not Found")
+        
+
+'''
+DONE:
+[ x ] Understand how to setups without root permission
+[ x ] Run the dump command
+[ x ] Read the dump output
+[   ] Fill variables:
+      [ x ]  run           
+      [ x ]  subrun        
+      [ x ]  sevt          
+      [   ]  stime         
+      [   ]  etime         
+      [ x ]  eevt           
+      [ x ]  num_events         
+      [   ]  ver      
+      [ x ]  file_format
+      [ x ]  ub_project_version 
+      [   ]  gps_stime_usec     
+      [   ]  gps_etime_usec     
+[ x ] undestand output format
+[   ] implement checks:
+      [   ]  did the subprocess command hang ? --> process timeout, check status
+      [   ]  ?????????????????????????????????????????????????????????????????????????is the fcl file right ?
+      [ x ]  how can I report the error ?
+      [ x ]  handle file not found
+      [   ]  is the artroot file corrupted
+      [ x ]  are the metadata valid for SAM?
+      [   ]  time out for metadata validation
+
+'''
