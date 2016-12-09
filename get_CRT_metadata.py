@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 """@package docstring
 Scope of this python script: create metadata one CRT raw file
 Author: Elena Gramellini
@@ -14,12 +14,11 @@ TO DO:
       [   ]  gps_stime_usec     
       [   ]  gps_etime_usec     
 [   ] implement checks:
-      [   ]  did the subprocess command hang ? --> process timeout, check status
-      [   ]  is the fcl file right?is the file corrupted? probably in the same part
+      [ ? ]  did the subprocess command hang ? is the fcl file right?is the file corrupted? probably in the same part
       [ x ]  write filename.out filename.err to report problems
       [ x ]  handle file not found
       [ x ]  is json format right for sam?
-      [   ]  time out for metadata validation
+      [ x ]  time out for metadata validation
 
 Functions:
 x dumpEvent(input_file, skipEvents):
@@ -37,7 +36,7 @@ x fileEventCount(input_file):
    This function exits with error 
     x if the metadata file doesn't exist
     x if the SAM metadata-validation goes wrong
-    - if the SAM metadata-validation takes too much time
+    x if the SAM metadata-validation takes too much time
 
 -  createMetadata(input_file):
    1) Aquires the metadata from  file name and location
@@ -63,10 +62,12 @@ import subprocess
 import datetime, json
 import argparse
 import warnings
+import signal
+
 # samweb include
 import samweb_cli
 import samweb_client.utility
-#import extractor_dict
+
 
 
 
@@ -194,29 +195,58 @@ def createMetadata(in_file):
 
 
 
+
 # Dump DAQ file content for 1 event given:
 # - the DAQ file name
 # - the number of events we want to skip
 def eventdump(infile,skipEvents):
     cmd = "art -c SAMMetaDataDump.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
+    # Start the subproces
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
-    out, err = p.communicate()
+    out, err = p.communicate() # This is working but it's in the wrong place
+
+    # Give it a max time to complete
+    timer=5
+    # Check its return status
+    return_val = p.poll()
+    # Wait until time is up or the process finished which whatever exit code
+    while return_val is None and timer>0:
+        time.sleep(1)
+        timer -= 1
+        return_val = p.poll()
+
+    # Check the exit code: if it's None, the subprocess hanged! Kill it!
+    if return_val is None:
+        print 'process exceeded timer and still running... kill it!'
+        p.kill()
+        return_val = -1
+        sys.exit("Problems running "+cmd+"\n art command hang")
+
+#    out, err = p.communicate() # This is not working (process hangs) but it's in the right place
+
+    # if exit code is not 0, something went wrongL exit with error
+    if (return_val):
+        sys.exit("Problems running "+cmd+"\n art exit code: "+str(return_val))
+        # otherwise return the output
     return out
+
 
 # Count events in DAQ file given:
 # - the DAQ file name
 def fileEventCount(infile):
-    cmd = "count_events "+infile
-#    seconds=10 # works only in python3
-#    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=seconds)
-    
+    cmd = "count_events "+infile    
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE)
     out, err = p.communicate()
     return out.split()[3]
+   
 
+
+def handler(signum, frame):
+    print "Breaking Metadata Hold!"
+    sys.exit("Timeout on Metadata validation")
 
 def matadataValidation(infile,jsonData):
     jsonFileName = str(infile)+".json"
@@ -227,8 +257,11 @@ def matadataValidation(infile,jsonData):
     # Set up the experiment for the SAM
     samweb = samweb_cli.SAMWebClient(experiment="uboone")
     # Check if metadata is valid, or exit with error
+    signal.signal(signal.SIGALRM, handler)
+    signal.alarm(4)
     try:
-        samweb.validateFileMetadata(jsonData)       
+        url = samweb.validateFileMetadata(jsonData)       
+        print url
         return True
     except Exception:
         sys.exit(in_file +" : Invalid/Corrupted Metadata")
@@ -244,8 +277,8 @@ if __name__ == '__main__':
 
     # We want to write the stdout and stderr 
     # for logging purposes in case something goes wrong
-#    sys.stdout = open(in_file+".out", 'w')
-#    sys.stderr = open(in_file+".err", 'w')
+    sys.stdout = open(in_file+".out", 'w')
+    sys.stderr = open(in_file+".err", 'w')
     
     print in_file
     # Check if file exists, or exit with error
@@ -277,12 +310,12 @@ DONE:
       [   ]  gps_etime_usec     
 [ x ] undestand output format
 [   ] implement checks:
-      [   ]  did the subprocess command hang ? --> process timeout, check status
-      [   ]  ?????????????????????????????????????????????????????????????????????????is the fcl file right ?
+      [ ? ]  did the subprocess command hang ? --> process timeout, check status
+      [ x ]  ?????????????????????????????????????????????????????????????????????????is the fcl file right ?
       [ x ]  how can I report the error ?
       [ x ]  handle file not found
-      [   ]  is the artroot file corrupted
+      [ x ]  is the artroot file corrupted
       [ x ]  are the metadata valid for SAM?
-      [   ]  time out for metadata validation
+      [ x ]  time out for metadata validation
 
 '''
