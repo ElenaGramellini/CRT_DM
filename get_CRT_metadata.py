@@ -240,7 +240,15 @@ def fileEventCount(infile):
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE)
     out, err = p.communicate()
-    return out.split()[3]
+    
+    count = out.split()[3]
+    
+    try:
+        int(count)
+    except Exception:
+        sys.exit(in_file +" : Invalid Event count")
+
+    return count
    
 
 
