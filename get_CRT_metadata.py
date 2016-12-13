@@ -254,14 +254,14 @@ def matadataValidation(infile,jsonData):
     # If not, exit with error
     if not  os.path.isfile(jsonFileName): 
          sys.exit(in_file +": Metadata File Not Found")
-    # Set up the experiment for the SAM
+    # Set up the experiment for SAM
     samweb = samweb_cli.SAMWebClient(experiment="uboone")
     # Check if metadata is valid, or exit with error
+    # If it takes too much time exit with error
     signal.signal(signal.SIGALRM, handler)
     signal.alarm(4)
     try:
-        url = samweb.validateFileMetadata(jsonData)       
-        print url
+        samweb.validateFileMetadata(jsonData)       
         return True
     except Exception:
         sys.exit(in_file +" : Invalid/Corrupted Metadata")

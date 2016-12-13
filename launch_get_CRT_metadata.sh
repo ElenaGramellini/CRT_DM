@@ -53,6 +53,7 @@ echo $CRT_FILE_JSON
 echo "launching python get_CRT_metadata.py for file $1"
 python get_CRT_metadata.py $1
 if [ $? == 0 ]; then
+        
 	echo "copying artroot file from CRT EVB to dropbox"
 #	ifdh cp $CRT_FILE      /pnfs/uboone/scratch/uboonepro/dropbox/blah/blah/blah
 	# Check if artroot file has been copied over to the dropbox	
