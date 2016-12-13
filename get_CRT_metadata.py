@@ -8,11 +8,7 @@ Version 0
 TO DO:
 [   ] Understand the stupid email....
 [   ] Fill variables:
-      [   ]  stime         
-      [   ]  etime         
       [   ]  ver --> needs work on the DAQ side!!!!      
-      [   ]  gps_stime_usec     
-      [   ]  gps_etime_usec     
 [   ] implement checks:
       [ ? ]  did the subprocess command hang ? is the fcl file right?is the file corrupted? probably in the same part
       [ x ]  write filename.out filename.err to report problems
@@ -307,19 +303,18 @@ DONE:
       [ x ]  run           
       [ x ]  subrun        
       [ x ]  sevt          
-      [   ]  stime         
-      [   ]  etime         
+      [ x ]  stime         
+      [ x ]  etime         
       [ x ]  eevt           
-      [ x ]  num_events         
-      [   ]  ver      
+      [ x ]  num_events        
       [ x ]  file_format
       [ x ]  ub_project_version 
-      [   ]  gps_stime_usec     
-      [   ]  gps_etime_usec     
+      [ x ]  gps_stime_usec     
+      [ x ]  gps_etime_usec     
 [ x ] undestand output format
 [   ] implement checks:
       [ ? ]  did the subprocess command hang ? --> process timeout, check status
-      [ x ]  ?????????????????????????????????????????????????????????????????????????is the fcl file right ?
+      [ x ]  is the fcl file right?
       [ x ]  how can I report the error ?
       [ x ]  handle file not found
       [ x ]  is the artroot file corrupted
