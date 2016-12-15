@@ -37,6 +37,11 @@ setup sam_web_client
 
 # Define here the directory where bad files go to die
 badFilesDirectoryPath='/home/elenag/aFarmUpstate/'
+#badFilesDirectoryPath='/raid/failedFiles'
+
+# Define here the directory where bad files go to die
+badFilesLogsDirectoryPath='/home/elenag/aFarmUpstate/'
+#badFilesLogsDirectoryPath='/raid/failedFilesLog'
 
 # The variables CRT_FILE* specify the file location of:
 # - the artroot file
@@ -53,13 +58,12 @@ echo $CRT_FILE_JSON
 echo "launching python get_CRT_metadata.py for file $1"
 python get_CRT_metadata.py $1
 if [ $? == 0 ]; then
-        
 	echo "copying artroot file from CRT EVB to dropbox"
-#	ifdh cp $CRT_FILE      /pnfs/uboone/scratch/uboonepro/dropbox/blah/blah/blah
+#	ifdh cp $CRT_FILE_JSON /pnfs/uboone/scratch/uboonepro/dropbox/data/uboone/crt
 	# Check if artroot file has been copied over to the dropbox	
 	if [ $? == 0 ]; then
 	    echo "copying json file from CRT EVB to dropbox"
-#	ifdh cp $CRT_FILE_JSON /pnfs/uboone/scratch/uboonepro/dropbox/blah/blah/blah
+#	ifdh cp $CRT_FILE_JSON /pnfs/uboone/scratch/uboonepro/dropbox/data/uboone/crt
 	    # Check if json file has been copied over to the dropbox	
 	    if [ $? == 0 ]; then
                 # if everything goes smoothly here, you can safely remove the .out and .err
@@ -71,27 +75,27 @@ if [ $? == 0 ]; then
 		echo "$1.json was not shipped to Dropbox">>$CRT_FILE_ERR
 		echo "Move files in a farm upstate"
 		mv $CRT_FILE     $badFilesDirectoryPath
-		mv $CRT_FILE_OUT $badFilesDirectoryPath
-		mv $CRT_FILE_ERR $badFilesDirectoryPath
+		mv $CRT_FILE_OUT $badFilesLogsDirectoryPath
+		mv $CRT_FILE_ERR $badFilesLogsDirectoryPath
 		echo "Send email to the farmer"
-		# EMAIL COMMAND!!!!!!!!!!!!!!
+		echo $badFilesDirectoryPath | mail -s "CRT Error -- $1.json was not shipped to Dropbox " elenag@fnal.gov
 	    fi
 	else	       
 	    # Ooops, something went wrong, keep the logs!
 	    echo "$1 was not shipped to Dropbox">>$CRT_FILE_ERR
 	    echo "Move files in a farm upstate"
 	    mv $CRT_FILE     $badFilesDirectoryPath
-	    mv $CRT_FILE_OUT $badFilesDirectoryPath
-	    mv $CRT_FILE_ERR $badFilesDirectoryPath
+	    mv $CRT_FILE_OUT $badFilesLogsDirectoryPath
+	    mv $CRT_FILE_ERR $badFilesLogsDirectoryPath
 	    echo "Send email to the farmer"
-	    # EMAIL COMMAND!!!!!!!!!!!!!!
+	    echo $badFilesDirectoryPath | mail -s "CRT Error -- $1 was not shipped to Dropbox " elenag@fnal.gov
 	fi
 else
-    echo "Problems with this file metadata generation"
+    echo "Problems $1 metadata generation"
     echo "Move files in a farm upstate"
-    cp $CRT_FILE     $badFilesDirectoryPath
-    mv $CRT_FILE_OUT $badFilesDirectoryPath
-    mv $CRT_FILE_ERR $badFilesDirectoryPath
+    mv $CRT_FILE     $badFilesDirectoryPath
+    mv $CRT_FILE_OUT $badFilesLogsDirectoryPath
+    mv $CRT_FILE_ERR $badFilesLogsDirectoryPath
     echo "Send email to the farmer"
-    # EMAIL COMMAND!!!!!!!!!!!!!!
+    echo $badFilesLogsDirectoryPath | mail -s "CRT Error -- Problems with $1 metadata generation " elenag@fnal.gov
 fi

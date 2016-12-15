@@ -6,35 +6,36 @@ Creation Date: 2016-11-07
 Version 0 
 -----------------------------------------------------------------------
 TO DO:
-[   ] Understand the stupid email....
+[ x ] Understand the stupid email....
 [   ] Fill variables:
       [   ]  ver --> needs work on the DAQ side!!!!      
 [   ] implement checks:
-      [ ? ]  did the subprocess command hang ? is the fcl file right?is the file corrupted? probably in the same part
+      [ x ]  did the subprocess command hang ? is the fcl file right?is the file corrupted? probably in the same part
+      [   ]  repeat ^ for each shell command
       [ x ]  write filename.out filename.err to report problems
       [ x ]  handle file not found
       [ x ]  is json format right for sam?
       [ x ]  time out for metadata validation
 
 Functions:
-x dumpEvent(input_file, skipEvents):
+- dumpEvent(input_file, skipEvents):
    This function runs the shell command 
    $ art -c SAMMetaDataDump.fcl  -s input_file  -n 1  --nskip skipEvents
    and returns its stdout. 
    This art command dumps information about the event which are used to fill the metadata
 
-x fileEventCount(input_file):
+- fileEventCount(input_file):
    This function runs the shell command 
    $ count_events input_file
    and returns the 4th world of its stdout, which is the number of art events in the file
 
-- matadataValidation(input_file):
+x matadataValidation(input_file):
    This function exits with error 
     x if the metadata file doesn't exist
     x if the SAM metadata-validation goes wrong
     x if the SAM metadata-validation takes too much time
 
--  createMetadata(input_file):
+x  createMetadata(input_file):
    1) Aquires the metadata from  file name and location
    2) calls dumpEvent(input_file, 0) to get info on first event
    3) calls fileEventCount(input_file) to get number of events to skip
@@ -198,11 +199,13 @@ def createMetadata(in_file):
 def eventdump(infile,skipEvents):
     cmd = "art -c SAMMetaDataDump.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
     # Start the subproces
+    print datetime.datetime.now(), " 1"
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
+    print datetime.datetime.now(), " 2"
     out, err = p.communicate() # This is working but it's in the wrong place
-
+    print datetime.datetime.now(), " 3"
     # Give it a max time to complete
     timer=5
     # Check its return status
