@@ -59,11 +59,11 @@ echo "launching python get_CRT_metadata.py for file $1"
 python get_CRT_metadata.py $1
 if [ $? == 0 ]; then
 	echo "copying artroot file from CRT EVB to dropbox"
-#	ifdh cp $CRT_FILE_JSON /pnfs/uboone/scratch/uboonepro/dropbox/data/uboone/crt
+	#ifdh cp $CRT_FILE_JSON /pnfs/uboone/scratch/uboonepro/dropbox/data/uboone/crt
 	# Check if artroot file has been copied over to the dropbox	
 	if [ $? == 0 ]; then
 	    echo "copying json file from CRT EVB to dropbox"
-#	ifdh cp $CRT_FILE_JSON /pnfs/uboone/scratch/uboonepro/dropbox/data/uboone/crt
+	    # ifdh cp $CRT_FILE_JSON /pnfs/uboone/scratch/uboonepro/dropbox/data/uboone/crt
 	    # Check if json file has been copied over to the dropbox	
 	    if [ $? == 0 ]; then
                 # if everything goes smoothly here, you can safely remove the .out and .err

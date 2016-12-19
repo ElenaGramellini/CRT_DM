@@ -7,24 +7,18 @@ Version 0
 -----------------------------------------------------------------------
 TO DO:
 [ x ] Understand the stupid email....
+[   ] ifdh cp doesn't work
 [   ] Fill variables:
       [   ]  ver --> needs work on the DAQ side!!!!      
-[   ] implement checks:
-      [ x ]  did the subprocess command hang ? is the fcl file right?is the file corrupted? probably in the same part
-      [   ]  repeat ^ for each shell command
-      [ x ]  write filename.out filename.err to report problems
-      [ x ]  handle file not found
-      [ x ]  is json format right for sam?
-      [ x ]  time out for metadata validation
 
 Functions:
-- dumpEvent(input_file, skipEvents):
+x dumpEvent(input_file, skipEvents):
    This function runs the shell command 
    $ art -c SAMMetaDataDump.fcl  -s input_file  -n 1  --nskip skipEvents
    and returns its stdout. 
    This art command dumps information about the event which are used to fill the metadata
 
-- fileEventCount(input_file):
+x fileEventCount(input_file):
    This function runs the shell command 
    $ count_events input_file
    and returns the 4th world of its stdout, which is the number of art events in the file
@@ -64,8 +58,6 @@ import signal
 # samweb include
 import samweb_cli
 import samweb_client.utility
-
-
 
 
 
@@ -192,44 +184,55 @@ def createMetadata(in_file):
 
 
 
-
 # Dump DAQ file content for 1 event given:
 # - the DAQ file name
 # - the number of events we want to skip
 def eventdump(infile,skipEvents):
     cmd = "art -c SAMMetaDataDump.fcl -s "+infile + " -n 1 "+ "--nskip "+str(skipEvents)
     # Start the subproces
-    print datetime.datetime.now(), " 1"
     p = subprocess.Popen(cmd,shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
-    print datetime.datetime.now(), " 2"
-    out, err = p.communicate() # This is working but it's in the wrong place
-    print datetime.datetime.now(), " 3"
-    # Give it a max time to complete
+   
+    # Give it a max time to complete, like 5 seconds
     timer=5
     # Check its return status
     return_val = p.poll()
+    if  return_val is not None:
+        if (return_val):
+            sys.exit("Problems running "+cmd+"\n art exit code: "+str(return_val))
+        else:
+            out, err = p.communicate() 
+            return out
+
+    stdout = ''
+    stderr = ''
     # Wait until time is up or the process finished which whatever exit code
     while return_val is None and timer>0:
         time.sleep(1)
+        # while waiting, fetch stdout to avoid clogging the pipe                                                
+        for line in iter(p.stdout.readline, b''):
+            print line[:-1]
+            stdout+= line
+        for line in iter(p.stderr.readline, b''):
+            stderr += line
+   
         timer -= 1
         return_val = p.poll()
 
     # Check the exit code: if it's None, the subprocess hanged! Kill it!
     if return_val is None:
-        print 'process exceeded timer and still running... kill it!'
+        print 'art -c SAMMetaDataDump.fcl process exceeded timer and still running... kill it!'
         p.kill()
         return_val = -1
         sys.exit("Problems running "+cmd+"\n art command hang")
 
-#    out, err = p.communicate() # This is not working (process hangs) but it's in the right place
-
-    # if exit code is not 0, something went wrongL exit with error
+    # if exit code is not 0, something went wrong exit with error
     if (return_val):
         sys.exit("Problems running "+cmd+"\n art exit code: "+str(return_val))
         # otherwise return the output
-    return out
+    return stdout
+
 
 
 # Count events in DAQ file given:
@@ -237,18 +240,59 @@ def eventdump(infile,skipEvents):
 def fileEventCount(infile):
     cmd = "count_events "+infile    
     p = subprocess.Popen(cmd,shell=True,
-                         stdout=subprocess.PIPE)
-    out, err = p.communicate()
-    
-    count = out.split()[3]
-    
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+   
+    # Give it a max time to complete, like 5 seconds
+    timer=5
+    # Check its return status
+    return_val = p.poll()
+    if  return_val is not None:
+        if (return_val):
+            sys.exit("Problems running  "+cmd+"\n  exit code: "+str(return_val))
+        else:
+            out, err = p.communicate()
+
+            count = out.split()[3]
+            try:
+                int(count)
+            except Exception:
+                sys.exit(in_file +" : Invalid Event count")
+            return count
+
+    stdout = ''
+    stderr = ''
+    # Wait until time is up or the process finished which whatever exit code
+    while return_val is None and timer>0:
+        time.sleep(1)
+        # while waiting, fetch stdout to avoid clogging the pipe                                                
+        for line in iter(p.stdout.readline, b''):
+            print line[:-1]
+            stdout+= line
+        for line in iter(p.stderr.readline, b''):
+            stderr += line
+   
+        timer -= 1
+        return_val = p.poll()
+
+    # Check the exit code: if it's None, the subprocess hanged! Kill it!
+    if return_val is None:
+        print cmd+' process exceeded timer and still running... kill it!'
+        p.kill()
+        return_val = -1
+        sys.exit("Problems running "+cmd+"\n command hang")
+
+    # if exit code is not 0, something went wrong exit with error
+    if (return_val):
+        sys.exit("Problems running "+cmd+"\n art exit code: "+str(return_val))
+        # otherwise return the output
+   
+    count = stdout.split()[3]
     try:
         int(count)
     except Exception:
         sys.exit(in_file +" : Invalid Event count")
-
     return count
-   
 
 
 def handler(signum, frame):
@@ -315,8 +359,8 @@ DONE:
       [ x ]  gps_stime_usec     
       [ x ]  gps_etime_usec     
 [ x ] undestand output format
-[   ] implement checks:
-      [ ? ]  did the subprocess command hang ? --> process timeout, check status
+[ x ] implement checks:
+      [ x ]  did the subprocess command hang ? --> process timeout, check status
       [ x ]  is the fcl file right?
       [ x ]  how can I report the error ?
       [ x ]  handle file not found
